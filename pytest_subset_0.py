@@ -40,11 +40,14 @@ def test_quit_on_match(capsys):
     captured = capsys.readouterr()
     assert captured.out == "hello\nworld\n"
 def test_quit_with_n(capsys):
-    run_pied("1\n2\n3\n", ['-n', 'q'])
+    with pytest.raises(SystemExit):
+        run_pied("1\n2\n3\n", ['-n', 'q'])
     captured1 = capsys.readouterr()
-    run_pied("1\n2\n3\n", ['-n', '1q'])
+    with pytest.raises(SystemExit):
+        run_pied("1\n2\n3\n", ['-n', '1q'])
     captured2 = capsys.readouterr()
-    run_pied("1\n2\n3\n", ['-n', '/1/q'])
+    with pytest.raises(SystemExit):
+        run_pied("1\n2\n3\n", ['-n', '/1/q'])
     captured3 = capsys.readouterr()
     assert captured1.out == ""
     assert captured2.out == ""
