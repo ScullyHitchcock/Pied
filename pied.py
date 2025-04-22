@@ -175,12 +175,13 @@ def run_pied(i_flag: bool, n_flag: bool, cmd_lst: list, input_file=None):
 
     # 创建内容生成器，按顺序生成两行内容(line1, line2)，如果当前行时最后一行则生成(last_line, '')
     input_gen = input_generator(i_flag, input_file)
+    range_state = {}
     for line_num, two_lines in enumerate(input_gen, start=1):
         cur_line = two_lines[0]
         next_line = two_lines[1]
         is_last = True if next_line == '' else False
-        # 输入 cur_line 的信息，对其执行 cmd_lst 命令链，得到结果 result
-        result, output_flags = run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file)
+        # 每次 run_pied 执行时，range_state 独立
+        result, output_flags = run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state)
         # 把结果 result 传入 output 函数，函数根据 n_flag 和 temp_file 的状态决定输出方式
         output(n_flag, result, output_flags, temp_file)
 
@@ -188,7 +189,7 @@ def run_pied(i_flag: bool, n_flag: bool, cmd_lst: list, input_file=None):
     if input_file and i_flag:
         override(input_file, temp_file)
 
-def run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file) -> tuple[str, list]:
+def run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state) -> tuple[str, list]:
     """
     对 cur_line 进行 cmd_lst 处理
     :param cmd_lst: 命令链
@@ -202,11 +203,11 @@ def run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file) -> tuple[str, l
     i = 0
     l = len(cmd_lst)
     while i < l:
-        cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file)
+        cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state)
     return cur_line, output_flags
 
 
-def run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file):
+def run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state):
     """
     对文本 cur_line 执行 cmd_lst[i] 特定命令，返回三个结果：
     1，处理后的文本
@@ -228,7 +229,7 @@ def run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_
     cmd = cmd_lst[i]
     addr1 = cmd["addr1"]
     addr2 = cmd["addr2"]
-    if aadr_matches(cur_line, line_num, is_last, addr1, addr2):
+    if aadr_matches(cur_line, line_num, is_last, addr1, addr2, range_state):
         match cmd["cmd"]:
         # 识别 cmd 字段，执行不同指令逻辑:
         # 修改 result -> 修改 next_i -> 修改 changed
@@ -297,7 +298,7 @@ def run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_
         i += 1
     return cur_line, i, output_flags
 
-def aadr_matches(cur_line: str, line_num: int, is_last: bool, addr1, addr2) -> bool:
+def aadr_matches(cur_line: str, line_num: int, is_last: bool, addr1, addr2, range_state: dict) -> bool:
     """判断当前行是否符合 addr1 或 addr1,addr2 的匹配条件"""
     # 没有地址，默认全部匹配
     if addr1 is None:
@@ -320,17 +321,14 @@ def aadr_matches(cur_line: str, line_num: int, is_last: bool, addr1, addr2) -> b
     else:
         # 范围：只要当前行在 addr1 和 addr2 范围内就匹配（简化处理为闭区间）
         in_range = False
-        if not hasattr(aadr_matches, "_range_active"):
-            aadr_matches._range_active = False
-
-        if not aadr_matches._range_active:
+        if not range_state.get("active", False):
             if match(addr1, line_num, is_last):
-                aadr_matches._range_active = True
+                range_state["active"] = True
                 in_range = True
         else:
             in_range = True
             if match(addr2, line_num, is_last):
-                aadr_matches._range_active = False
+                range_state["active"] = False
 
         return in_range
 
