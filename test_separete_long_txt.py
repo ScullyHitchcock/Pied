@@ -1,4 +1,4 @@
-from pied_for_more import separate_script_txt
+from pied import separate_script_txt
 
 txts = ["3,5d",
         "1d;2q",

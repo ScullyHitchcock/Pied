@@ -1,4 +1,4 @@
-from pied_for_more import parse_command
+from pied import parse_command
 
 def test_1():
     res = parse_command("3,5d")

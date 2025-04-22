@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
 import shutil
 import sys
 import re
 import tempfile
-from collections import namedtuple
 
 def parse_command(cmd_text: str) -> dict:
     result = {
@@ -353,7 +353,7 @@ def output(n_flag: bool, result: str, output_flags: list, temp_file: str):
                 break
             elif flag == "q":
                 output(n_flag, result, [], temp_file)
-                exit(0)
+                sys.exit(0)
             elif type(flag) == tuple:
                 contents = flag[1]
                 output(n_flag, result, [], temp_file)
