@@ -3,6 +3,8 @@ import shutil
 import sys
 import re
 import tempfile
+from email.generator import Generator
+
 
 def parse_command(cmd_text: str) -> dict:
     result = {
@@ -206,7 +208,6 @@ def run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state) ->
         cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state)
     return cur_line, output_flags
 
-
 def run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state):
     """
     对文本 cur_line 执行 cmd_lst[i] 特定命令，返回三个结果：
@@ -408,6 +409,386 @@ def main():
     else:
         # 对 stdin 流进行 run_pied
         run_pied(i_flag, n_flag, cmd_lst)
+
+class Line:
+    """行信息"""
+    def __init__(self, filename, line_txt, next_line_txt, line_num):
+        self.filename = filename
+        self.line_txt = line_txt
+        self.next_line_txt = next_line_txt
+        self.line_num = line_num
+
+    def is_last(self):
+        return self.next_line_txt == ''
+
+    def __str__(self):
+        return f"<File: {self.filename} Line {self.line_num}: '{self.line_txt}'>"
+
+class Result:
+    def __init__(self, orin_line: str):
+        self.orin_line = orin_line
+        self.cmd_record = []
+        self.result = None
+    def update(self):
+        pass
+
+    def output(self):
+        pass
+
+class Script:
+    def __init__(self, script_texts):
+        self.cmd_list = []
+        cmd_txt_list = self.separate_script_txt(script_texts)
+        for cmd_txt in cmd_txt_list:
+            self.cmd_list.append(Command(cmd_txt))
+
+    def __len__(self):
+        return len(self.cmd_list)
+
+    @staticmethod
+    def separate_script_txt(script_texts):
+        # 将长命令文本中的每一条语句拆分出来装入列表
+        cmd_txt = ''
+        cmds = []
+        i = 0
+        length = len(script_texts)
+        while i < length:
+            if script_texts[i] == '/':
+                addr = ''
+                # 如果当前字符是 / 则不断组装字符直到组装到下一个 / 后停止
+                # 最终 res 内应该是 '/[any]/' 的格式
+                while addr.count('/') < 2:
+                    addr += script_texts[i]
+                    i += 1
+                cmd_txt += addr
+            elif script_texts[i] == 's':
+                # 如果当前字符是 s
+                # 取 s 下一位字符标记为 separator 分隔符，最终 res 内应该是 's[separator][any][separator][any][separator]' 的格式
+                cmd_txt += script_texts[i]
+                i += 1
+                s_separator = script_texts[i]
+                while s_separator == ' ':
+                    i += 1
+                    s_separator = script_texts[i]
+                sub_args = ''
+                while sub_args.count(s_separator) < 3:
+                    sub_args += script_texts[i]
+                    i += 1
+                cmd_txt += sub_args
+            elif script_texts[i] in ('t', 'b', ':'):
+                # 当字符是标签语句开头，组装字符直到当前语句结束（遇到 ; ）或到达字符串末尾
+                while i < length and script_texts[i] not in (';', '\n'):
+                    if script_texts[i] != ' ':
+                        cmd_txt += script_texts[i]
+                    i += 1
+            elif script_texts[i] == ' ':
+                # 当字符是空格键，不组装，跳过
+                i += 1
+            elif script_texts[i] == '#':
+                # 当字符是 #，跳过不组装直到当前语句结束（遇到 ; ）或到达字符串末尾
+                while i < length and script_texts[i] not in (';', '\n'):
+                    i += 1
+            elif script_texts[i] in (';', '\n'):
+                # 当字符是 ; 或 \n 语句结束符，储存当前语句 txt，继续循环
+                if cmd_txt:
+                    cmds.append(cmd_txt)
+                i += 1
+                cmd_txt = ''
+            else:
+                # 当字符是普通字符，直接组装
+                cmd_txt += script_texts[i]
+                i += 1
+        if cmd_txt:
+            # 循环结束后如果 cmd_txt 不为空则储存
+            cmds.append(cmd_txt)
+        return cmds
+
+    def run(self, line: Line) -> Result:
+        """
+        遍历 cmd_list，逐个执行 line
+        :param line:
+        :return:
+        """
+        result = Result(line.line_txt)
+        i, l = 0, len(self.cmd_list)
+        while i < l:
+            cmd = self.cmd_list[i]
+            if cmd.match(line):
+                cmd.process(line, result)
+                i = self.locate_next_cmd(result)
+            else:
+                i += 1
+        return result
+
+    def locate_next_cmd(self, result: Result) -> int:
+        return 0
+
+
+class Command:
+    def __init__(self, cmd_txt):
+        self.cmd_txt = cmd_txt
+        cmd_info = self.parse_command(cmd_txt)
+        addr1, addr2 = cmd_info["addr1"], cmd_info["addr2"]
+        self.addr1 = Address(addr1)
+        self.addr2 = Address(addr2)
+        self.type = cmd_info["cmd"]
+        self.label = cmd_info["label"]
+        self.args = cmd_info["args"]
+        self.in_range = False
+
+    def __str__(self):
+        return f"Command: {self.cmd_txt}"
+
+    @staticmethod
+    def parse_command(cmd_txt):
+        result = {
+            "addr1": None,
+            "addr2": None,
+            "cmd": None,
+            "args": None,
+            "label": None,
+            "branch_label": None,
+        }
+
+        i = 0
+        length = len(cmd_txt)
+
+        def parse_addr():
+            nonlocal i
+            if cmd_txt[i] == '/':
+                # parse /.../
+                i += 1
+                start = i
+                while i < length and cmd_txt[i] != '/':
+                    if cmd_txt[i] == '\\' and i + 1 < length:
+                        i += 2
+                    else:
+                        i += 1
+                addr = '/' + cmd_txt[start:i] + '/'
+                i += 1
+                return addr.strip()
+            elif cmd_txt[i] == '$':
+                i += 1
+                return '$'
+            elif cmd_txt[i].isdigit():
+                start = i
+                while i < length and cmd_txt[i].isdigit():
+                    i += 1
+                return cmd_txt[start:i]
+            return None
+
+        # extract addr1
+        if i < length and (cmd_txt[i] == '/' or cmd_txt[i].isdigit() or cmd_txt[i] == '$'):
+            result["addr1"] = parse_addr()
+            # check for comma and addr2
+            if i < length and cmd_txt[i] == ',':
+                i += 1
+                result["addr2"] = parse_addr()
+        if i < length:
+            result["cmd"] = cmd_txt[i]
+            i += 1
+
+        # rest is command-specific
+        rest = cmd_txt[i:]
+
+        if result["cmd"] in ('b', 't', ':'):
+            result["branch"] = rest or None
+        elif result["cmd"] == 's':
+            # parse s/pat/repl/flags
+            if rest:
+                delim = rest[0]
+                parts = rest[1:].split(delim)
+                result["args"] = tuple(parts)
+        elif result["cmd"] in ('a', 'i', 'c'):
+            result["args"] = rest
+
+        return result
+
+    def match(self, line: Line) -> bool:
+        if self.addr1.is_empty():
+            return True
+        if self.addr2.is_empty():
+            return self.addr1.match(line)
+        # in_range 代表上一行文本在地址匹配范围内
+        if self.in_range:
+            if self.addr2.match(line):
+                # 当在范围内且地址2匹配，说明当前行已在范围边缘，
+                # 关闭 range，代表下一行内容将要重新评估 addr1
+                # 返回 True
+                self.in_range = False
+                return True
+            if self.addr2.is_regex():
+                # 当在范围内且地址2不匹配，但地址2属于正则类型时，继续扩张 range，返回 True
+                return True
+            if self.addr2.is_digit():
+                # 当在范围内且地址2不匹配，但地址2属于数字类型，且当前行数已经超过地址2
+                # 关闭 range，返回 False
+                if int(self.addr2.addr) >= line.line_num:
+                    self.in_range = False
+                    return False
+            return True
+        else:
+            if self.addr1.match(line):
+                self.in_range = True
+                return True
+            return False
+
+    def process(self, line: Line, result: Result):
+        pass
+
+
+class Address:
+    def __init__(self, addr):
+        if addr is None:
+            self.addr = ''
+        else:
+            self.addr = addr
+
+    def __str__(self):
+        if self.is_digit():
+            type = 'Digit'
+        elif self.is_regex():
+            type = 'Regex'
+        elif self.is_special_char():
+            type = 'Last Line'
+        else:
+            type = 'Empty'
+        return f"{type}: {self.addr}"
+
+    def is_digit(self) -> bool:
+        return self.addr.isdigit()
+
+    def is_regex(self) -> bool:
+        return self.addr.startswith('/') and self.addr.endswith('/')
+
+    def is_special_char(self) -> bool:
+        return self.addr == '$'
+
+    def is_empty(self) -> bool:
+        return self.addr == ''
+
+    def match(self, line: Line) -> bool:
+        txt = line.line_txt
+        if self.is_digit():
+            return int(self.addr) == line.line_num
+        if self.is_regex():
+            pattern = self.addr[1:-1]
+            return re.search(pattern, txt) is not None
+        if self.is_special_char():
+            return line.is_last()
+        return False
+
+def line_generator(input: list | str | None) -> iter:
+    def file_reader(filename) -> iter:
+        with open(filename, 'r') as f:
+            for line in f:
+                yield line.rstrip('\n')
+    def line_iterator() -> iter:
+        if not input:
+            for line in sys.stdin:
+                yield 'stdin', line.rstrip('\n')
+        elif isinstance(input, str):
+            for line in file_reader(input):
+                yield input, line
+        elif isinstance(input, list):
+            for file in input:
+                for line in file_reader(file):
+                    yield file, line
+
+    it = line_iterator()
+    try:
+       filename, cur_line = next(it)
+    except StopIteration:
+        return  # 空输入
+
+    line_num = 1
+    for next_filename, next_line in it:
+        yield Line(filename, cur_line, next_line, line_num)
+        cur_line = next_line
+        line_num += 1
+        filename = next_filename
+
+    yield Line(filename, cur_line, '', line_num)  # 最后一行
+
+class PiedExecutor:
+    def __init__(self, line_gen: iter, script: Script, i_flag: bool, n_flag: bool):
+        self.line_gen = line_gen
+        self.script = script
+        self.i_flag = i_flag
+        self.n_flag = n_flag
+
+    def execute(self):
+        # 从 line_gen 中提取 line 文本
+        # script 执行 line 命令，得到 res 结果
+        # 输出结果
+        for line in self.line_gen:
+            res = self.script.run(line)
+            res.output()
+
+    def output(self, line):
+        pass
+
+
+def parse_cmd_line_args(args: list) -> tuple[bool, bool, str, list[str]]:
+    """
+    对命令行输入的参数进行解析，拆分出以下参数
+    :param args: 命令行文本参数
+    :return:
+        i_flag: 如果 args 带有 -i 字样返回 True 否则 False
+        n_flag: 如果 args 带有 -n 字样返回 True 否则 False
+        script_txt: 脚本命令文本
+        input_files_lst: input 来源文件名列表，如果为空，则说明应从 stdin 中获取输入数据
+    """
+    i_flag = False
+    n_flag = False
+    script_txt = None
+    input_files_lst = []
+
+    # 1. -i
+    if args and args[0] == '-i':
+        i_flag = True
+        args.pop(0)
+
+    # 2. -n
+    if args and args[0] == '-n':
+        n_flag = True
+        args.pop(0)
+
+    if args:
+        # 3. -f foo.pied OR inline_cmd
+        if args and args[0] == '-f':
+            script_txt = args[1]
+            input_files_lst = args[2:]
+        else:
+            script_txt = args[0]
+            input_files_lst = args[1:]
+
+    return i_flag, n_flag, script_txt, input_files_lst
+
+def main_1():
+    # 读取命令列表，解析 -i -n 指令，以及脚本命令文本，和输入来源文本
+    args = sys.argv[1:]
+    i_flag, n_flag, script_txt, input_files_lst = parse_cmd_line_args(args)
+    if not script_txt:
+        return
+    # 传入脚本命令文本，得到 Script 实例对象（对象内储存若干个 Command 类型对象）
+    script = Script(script_txt)
+
+    def execute(input):
+        # 创建生成器 line_gen，每次可以生成两行 Line 对象
+        line_gen = line_generator(input)
+        # 将生成器、脚本对象、i_flag、n_flag 一并传入，构造 PiedExecutor 对象 pied
+        pied = PiedExecutor(line_gen, script, i_flag, n_flag)
+        # pied 调用 execute() 方法，内部逻辑为对 line_gen 生成的每一行 Line 对象执行 script 中的 Command 命令，并输出
+        pied.execute()
+    if i_flag and input_files_lst:
+        # 如果是 -i 模式且 input_files_lst 不为空时，需要对 input_files_lst 内的每个文件单独执行脚本命令
+        for input_filename in input_files_lst:
+            execute(input_filename)
+    else:
+        # 否则无论 input_files_lst 内有多少个文件，都视为一次输入流数据（按列表顺序读取内容），执行一次脚本
+        # 如果 input_files_lst 为空，则读取 sys.stdin 作为输入数据，对其执行脚本
+        execute(input_files_lst)
 
 if __name__ == '__main__':
     main()

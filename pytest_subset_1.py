@@ -145,3 +145,53 @@ def test_range_addresses5(capsys):
     run_pied(['/4/,/6/s/[12]/9/'], input_data)
     captured = capsys.readouterr()
     assert captured.out == '10\n11\n12\n13\n94\n95\n96\n17\n18\n19\n20\n21\n22\n23\n94\n95\n96\n27\n28\n29\n30\n'
+
+def test_range_addresses6(capsys):
+    input_data = "\n".join(str(i) for i in range(10, 41)) + "\n"
+    run_pied(['/2/,4p'], input_data)
+    captured = capsys.readouterr()
+    assert captured.out == """10
+11
+12
+12
+13
+13
+14
+15
+16
+17
+18
+19
+20
+20
+21
+21
+22
+22
+23
+23
+24
+24
+25
+25
+26
+26
+27
+27
+28
+28
+29
+29
+30
+31
+32
+32
+33
+34
+35
+36
+37
+38
+39
+40
+"""
