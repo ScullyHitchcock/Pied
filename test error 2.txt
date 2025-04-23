@@ -1,0 +1,566 @@
+~/cs2041/ass2$ 2041 autotest pied
+
+bash -c 'shopt -s nullglob; python3 -B -m py_compile *.py' # pied.py
+bash -c 'shopt -s nullglob; check_features_used.sh *.py' # pied.py
+Test subset0_quit_01 ("seq 1 5 | python3 -s -S pied.py '3q'") - passed
+Test subset0_quit_02 ("seq 9 20 | python3 -s -S pied.py '3q'") - passed
+Test subset0_quit_03 ('seq 42 44 | python3 -s -S pied.py 1q') - passed
+Test subset0_quit_04 ('python3 -s -S pied.py 10q < dictionary.txt') - passed
+Test subset0_quit_05 ('seq 41 43 | python3 -s -S pied.py 4q') - passed
+Test subset0_quit_06 ('yes | python3 -s -S pied.py 3q') - passed
+Test subset0_quit_07 ('seq 90 110 | python3 -s -S pied.py /.1/q') - passed
+Test subset0_quit_08 ("seq 10 15 | python3 -s -S pied.py '/.1/q'") - passed
+Test subset0_quit_09 ("seq 500 600 | python3 -s -S pied.py '/^.+5$/q'") - passed
+Test subset0_quit_10 ("seq 100 1000 | python3 -s -S pied.py '/13/q'") - passed
+Test subset0_quit_11 ("python3 -s -S pied.py '/r.*v/q' < dictionary.txt") - passed
+Test subset0_quit_12 ('seq 10 100 | python3 -s -S pied.py /^2/q') - passed
+Test subset0_quit_13 ("python3 -s -S pied.py '/.10/q' < dictionary.txt") - passed
+Test subset0_quit_14 ("python3 -s -S pied.py '/b.6b/q' < dictionary.txt") - passed
+Test subset0_print_15 ("seq 1 5 | python3 -s -S pied.py '2p'") - passed
+Test subset0_print_16 ("seq 7 11 | python3 -s -S pied.py '4p'") - passed
+Test subset0_print_17 ('seq 41 43 | python3 -s -S pied.py 2p') - passed
+Test subset0_print_18 ('head dictionary.txt | python3 -s -S pied.py 3p') - passed
+Test subset0_print_19 ("head dictionary.txt | python3 -s -S pied.py '/s$/p'") - passed
+Test subset0_print_20 ("seq 1 5 | python3 -s -S pied.py -n '3p'") - passed
+Test subset0_print_21 ("head -n 1000 dictionary.txt | python3 -s -S pied.py -n '/z.$/p'") - passed
+Test subset0_print_22 ('seq 41 43 | python3 -s -S pied.py -n 2p') - passed
+Test subset0_print_23 ('python3 -s -S pied.py -n 42p < dictionary.txt') - passed
+Test subset0_print_24 ("seq 65 85 | python3 -s -S pied.py '/^7/p'") - passed
+Test subset0_print_25 ("seq 2 3 20 | python3 -s -S pied.py -n '/^1/p'") - passed
+Test subset0_print_26 ("seq 1 5 | python3 -s -S pied.py 'p'") - passed
+Test subset0_delete_27 ("seq 1 5 | python3 -s -S pied.py '4d'") - passed
+Test subset0_delete_28 ("seq 1 5 | python3 -s -S pied.py '1d'") - passed
+Test subset0_delete_29 ("seq 1 100 | python3 -s -S pied.py '/.2/d'") - passed
+Test subset0_delete_30 ("seq 11 20 | python3 -s -S pied.py '/[2468]/d'") - passed
+Test subset0_delete_31 ("seq 11 100 | python3 -s -S pied.py '/[2468]/d'") - passed
+Test subset0_delete_32 ("seq 1 5 | python3 -s -S pied.py -n '1d'") - passed
+Test subset0_delete_33 ("seq 1 1000 | python3 -s -S pied.py 'd'") - passed
+Test subset0_substitute_34 ("seq 1 5 | python3 -s -S pied.py 's/[15]/zzz/'") - passed
+Test subset0_substitute_35 ("seq 10 20 | python3 -s -S pied.py 's/[15]/zzz/'") - passed
+Test subset0_substitute_36 ("seq 100 111 | python3 -s -S pied.py 's/11/zzz/'") - passed
+Test subset0_substitute_37 ('echo "Hello Andrew" | python3 -s -S pied.py \'s/e//\'') - passed
+Test subset0_substitute_38 ('echo "Hello Andrew" | python3 -s -S pied.py \'s/e//g\'') - passed
+Test subset0_substitute_39 ("head dictionary.txt | python3 -s -S pied.py 's/a//g'") - passed
+Test subset0_substitute_40 ("seq 11 19 | python3 -s -S pied.py '5s/1/2/'") - passed
+Test subset0_substitute_41 ("seq 51 60 | python3 -s -S pied.py '5s/5/9/g'") - passed
+Test subset0_substitute_42 ("seq 100 111 | python3 -s -S pied.py '/1.1/s/1/-/g'") - passed
+Test subset1_addresses_43 ("seq 1 5 | python3 -s -S pied.py '$d'") - passed
+Test subset1_addresses_44 ("seq 0 10 100 | python3 -s -S pied.py '$p'") - passed
+Test subset1_addresses_45 ("seq 1 10000 | python3 -s -S pied.py -n '$p'") - passed
+Test subset1_addresses_46 ("python3 -s -S pied.py -n '$p' < dictionary.txt") - passed
+Test subset1_addresses_47 ('seq 42 44 | python3 -s -S pied.py 2,3d') - passed
+Test subset1_addresses_48 ('seq 10 21 | python3 -s -S pied.py 3,/2/d') - passed
+Test subset1_addresses_49 ('seq 10 21 | python3 -s -S pied.py /2/,7d') - passed
+Test subset1_addresses_50 ('seq 10 21 | python3 -s -S pied.py /2/,/7/d') - passed
+Test subset1_addresses_51 ("seq 10 21 | python3 -s -S pied.py '/1$/,/^2/d'") - passed
+Test subset1_addresses_52 ("seq 10 30 | python3 -s -S pied.py '/4/,/6/s/[12]/9/'") - passed
+Test subset1_addresses_53 ("seq 0 10 200 | python3 -s -S pied.py '/4/,/6/s/0/-/g'") - passed
+Test subset1_addresses_54 ("seq 10 40 | python3 -s -S pied.py '/2/,4p'") - failed (Incorrect output)
+Your program produced these 54 lines of output:
+10
+11
+12
+12
+13
+13
+14
+15
+16
+17
+18
+19
+20
+20
+21
+21
+22
+22
+23
+23
+24
+24
+25
+25
+26
+26
+27
+27
+28
+28
+29
+29
+...
+
+
+The correct 44 lines of output for this test were:
+10
+11
+12
+12
+13
+13
+14
+15
+16
+17
+18
+19
+20
+20
+21
+21
+22
+22
+23
+23
+24
+24
+25
+25
+26
+26
+27
+27
+28
+28
+29
+29
+...
+
+
+The difference between your output(-) and the correct output(+) is:
+...
+  30
+- 30
+- 31
+  31
+  33
+- 33
+- 34
+  34
+  35
+- 35
+- 36
+  36
+  37
+- 37
+- 38
+  38
+  39
+- 39
+  40
+- 40
+You can reproduce this test by executing these commands:
+  seq 10 40 | python3 -s -S pied.py '/2/,4p'
+Test subset1_substitute_55 ("seq 1 5 | python3 -s -S pied.py 'sX[15]XzzzX'") - passed
+Test subset1_substitute_56 ("seq 1 5 | python3 -s -S pied.py 's?[15]?zzz?'") - passed
+Test subset1_substitute_57 ("seq 1 5 | python3 -s -S pied.py 's_[15]_zzz_'") - passed
+Test subset1_substitute_58 ("seq 1 5 | python3 -s -S pied.py 'sX[15]Xz/z/zX'") - passed
+Test subset1_multiple_commands_59 ("seq 1 5 | python3 -s -S pied.py '4q;/2/d'") - passed
+Test subset1_multiple_commands_60 ("seq 1 5 | python3 -s -S pied.py '/2/d;4q'") - passed
+Test subset1_multiple_commands_61 ("seq 1 10 | python3 -s -S pied.py '5d;5q'") - passed
+Test subset1_multiple_commands_62 ("seq 1 20 | python3 -s -S pied.py '/2$/,/8$/d;4,6p'") - passed
+Test subset1_multiple_commands_63 ("seq 1 100 | python3 -s -S pied.py -n '1,/.1/p;/5/,/9/s/.//;/.2/,/.9/p;85q'") - failed (Incorrect output)
+Your program produced these 137 lines of output:
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+12
+13
+3
+14
+4
+15
+5
+16
+6
+17
+7
+18
+8
+19
+22
+...
+
+
+The correct 85 lines of output for this test were:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+5
+6
+7
+8
+9
+20
+21
+22
+23
+24
+5
+6
+7
+8
+9
+30
+31
+32
+...
+
+
+The difference between your output(-) and the correct output(+) is:
+  1
+- 
+  2
+- 
+  3
+- 
+  4
+- 
+  5
+- 
+  6
+- 
+  7
+- 
+  8
+- 
+  9
++ 10
++ 11
+  12
+  13
+- 3
+  14
+- 4
+- 15
+  5
+- 16
+  6
+- 17
+  7
+- 18
+You can reproduce this test by executing these commands:
+  seq 1 100 | python3 -s -S pied.py -n '1,/.1/p;/5/,/9/s/.//;/.2/,/.9/p;85q'
+Test subset1_multiple_commands_64 ("seq 1 13 | python3 -s -S pied.py '/2/p;s/2/*/'") - passed
+Test subset1_multiple_commands_65 ("seq 1 13 | python3 -s -S pied.py 's/2/*/;/2/p'") - passed
+Test subset1_-f_66 ("echo '4q' > commandsFile\nseq 1 5 | python3 -s -S pied.py -f commandsFile") - passed
+Test subset1_-f_67 ("echo '$q' > commandsFile\nseq 1 5 | python3 -s -S pied.py -f commandsFile") - passed
+Test subset1_-f_68 ("echo '$q;/2/d' > commandsFile\nseq 1 5 | python3 -s -S pied.py -f commandsFile") - passed
+Test subset1_-f_69 ('echo 4q    > commandsFile\necho /2/d >> commandsFile\nseq 1 5 | python3 -s -S pied.py -f commandsFile') - passed
+Test subset1_-f_70 ('echo /2/d > commandsFile\necho 4q  >> commandsFile\nseq 1 5 | python3 -s -S pied.py -f commandsFile') - passed
+Test subset1_-f_71 ("echo '1,/.1/p;/5/,/9/s/.//' > commandsFile\necho '/.2/,/.9/p;85q'    >> commandsFile\nseq 1 100 | python3 -s -S pied.py -n -f commandsFile") - failed (Incorrect output)
+Your program produced these 137 lines of output:
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+12
+13
+3
+14
+4
+15
+5
+16
+6
+17
+7
+18
+8
+19
+22
+...
+
+
+The correct 85 lines of output for this test were:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+5
+6
+7
+8
+9
+20
+21
+22
+23
+24
+5
+6
+7
+8
+9
+30
+31
+32
+...
+
+
+The difference between your output(-) and the correct output(+) is:
+  1
+- 
+  2
+- 
+  3
+- 
+  4
+- 
+  5
+- 
+  6
+- 
+  7
+- 
+  8
+- 
+  9
++ 10
++ 11
+  12
+  13
+- 3
+  14
+- 4
+- 15
+  5
+- 16
+  6
+- 17
+  7
+- 18
+You can reproduce this test by executing these commands:
+  echo '1,/.1/p;/5/,/9/s/.//' > commandsFile
+echo '/.2/,/.9/p;85q'    >> commandsFile
+seq 1 100 | python3 -s -S pied.py -n -f commandsFile
+Test subset1_input_files_72 ("seq 1 2 > two.txt\nseq 1 5 > five.txt\npython3 -s -S pied.py '4q;/2/d' two.txt five.txt") - passed
+Test subset1_input_files_73 ("seq 1 2 > two.txt\nseq 1 5 > five.txt\npython3 -s -S pied.py '4q;/2/d' five.txt two.txt") - passed
+Test subset1_input_files_74 ("seq 1 2 > two.txt\nseq 1 5 > five.txt\npython3 -s -S pied.py '/2/d;4q' two.txt five.txt") - passed
+Test subset1_input_files_75 ('echo 4q    > commandsFile\necho /2/d >> commandsFile\nseq 1 2 > two.txt\nseq 1 5 > five.txt\npython3 -s -S pied.py -f commandsFile five.txt two.txt') - passed
+Test subset1_input_files_76 ('echo 4q    > commandsFile\necho /2/d >> commandsFile\nseq 1 2    > two.txt\nseq 1 5    > five.txt\npython3 -s -S pied.py -f commandsFile two.txt five.txt') - passed
+Test subset1_input_files_77 ('echo /2/d > commandsFile\necho 4q  >> commandsFile\nseq 1 2   > two.txt\nseq 1 5   > five.txt\npython3 -s -S pied.py -f commandsFile two.txt five.txt') - passed
+Test subset1_input_files_78 ("python3 -s -S pied.py -n '10p;$p' dictionary.txt") - passed
+Test subset1_whitespace_79 ("seq 24 42 | python3 -s -S pied.py ' 3, 17  d  # comment'") - passed
+Test subset1_whitespace_80 ("seq 24 43 | python3 -s -S pied.py '/2/d # delete  ;  4  q # quit'") - passed
+Test subset1_whitespace_81 ("seq 10 21 | python3 -s -S pied.py '  /1$/  ,   /^2/    d # comment'") - passed
+Test subset1_whitespace_82 ("echo '/2/    d # comment' > commandsFile\necho '# comment'         >> commandsFile\necho '4    q'            >> commandsFile\nseq 1 2   > two.txt\nseq 1 5   > five.txt\npython3 -s -S pied.py -f commandsFile two.txt five.txt") - passed
+Test subset2_-i_83 ('seq 1 5 > five.txt\npython3 -s -S pied.py -i /[24]/d five.txt\ncat five.txt') - passed
+Test subset2_-i_84 ("seq 1 5 > five.txt\necho '/[24]/d' > commandsFile\npython3 -s -S pied.py -i -f commandsFile five.txt\ncat five.txt") - passed
+Test subset2_multiple_commands_85 ("echo 'Punctuation characters include . , ; :' | python3 -s -S pied.py 's/;/semicolon/g;/;/q'") - passed
+Test subset2_substitute_86 ("seq 1 5 | python3 -s -S pied.py 's/[15]/z\\/z\\/z/'") - failed (errors)
+Your program produced these errors:
+Traceback (most recent call last):
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 413, in <module>
+    main()
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 410, in main
+    run_pied(i_flag, n_flag, cmd_lst)
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 184, in run_pied
+    result, output_flags = run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 206, in run
+    cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 246, in run_cmd
+    pattern, repl, modifier = cmd["args"]
+    ^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 3)
+You can reproduce this test by executing these commands:
+  seq 1 5 | python3 -s -S pied.py 's/[15]/z\/z\/z/'
+Test subset2_substitute_87 ("seq 1 5 | python3 -s -S pied.py 's_[15]_z\\_z\\_z_'") - failed (errors)
+Your program produced these errors:
+Traceback (most recent call last):
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 413, in <module>
+    main()
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 410, in main
+    run_pied(i_flag, n_flag, cmd_lst)
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 184, in run_pied
+    result, output_flags = run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 206, in run
+    cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 246, in run_cmd
+    pattern, repl, modifier = cmd["args"]
+    ^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 3)
+You can reproduce this test by executing these commands:
+  seq 1 5 | python3 -s -S pied.py 's_[15]_z\_z\_z_'
+Test subset2_substitute_88 ("seq 1 5 | python3 -s -S pied.py 's1[\\15]1zzz1'") - failed (errors)
+Your program produced these errors:
+Traceback (most recent call last):
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 413, in <module>
+    main()
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 410, in main
+    run_pied(i_flag, n_flag, cmd_lst)
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 184, in run_pied
+    result, output_flags = run(cmd_lst, cur_line, line_num, is_last, n_flag, temp_file, range_state)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 206, in run
+    cur_line, i, output_flags = run_cmd(cur_line, cmd_lst, i, line_num, is_last, output_flags, n_flag, temp_file, range_state)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/tmp2_kh6lqp/autotest/pied.py", line 246, in run_cmd
+    pattern, repl, modifier = cmd["args"]
+    ^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 3)
+You can reproduce this test by executing these commands:
+  seq 1 5 | python3 -s -S pied.py 's1[\15]1zzz1'
+Test subset2_append_89 ("seq 1 5 | python3 -s -S pied.py '3a hello'") - passed
+Test subset2_append_90 ("seq 1 5 | python3 -s -S pied.py '$a hello'") - passed
+Test subset2_append_91 ("seq 1 5 | python3 -s -S pied.py 'a hello'") - passed
+Test subset2_append_92 ("head dictionary.txt | python3 -s -S pied.py '/s$/a hello'") - passed
+Test subset2_append_93 ("head dictionary.txt | python3 -s -S pied.py '/.{3}/a hello'") - passed
+Test subset2_append_94 ("seq 1 5 | python3 -s -S pied.py '3i hello'") - passed
+Test subset2_append_95 ("seq 1 5 | python3 -s -S pied.py '$i hello'") - passed
+Test subset2_append_96 ("seq 1 5 | python3 -s -S pied.py 'i hello'") - passed
+Test subset2_append_97 ("head dictionary.txt | python3 -s -S pied.py '/s$/i hello'") - passed
+Test subset2_append_98 ("head dictionary.txt | python3 -s -S pied.py '/.{3}/i hello'") - passed
+Test subset2_change_99 ("head dictionary.txt | python3 -s -S pied.py '/.{3}/c hello'") - passed
+Test subset2_change_100 ("head dictionary.txt | python3 -s -S pied.py '/.{3}/,/.{5}/c hello'") - failed (Incorrect output)
+Your program produced these 10 lines of output:
+a
+hello
+hello
+hello
+hello
+hello
+hello
+hello
+hello
+hello
+
+The correct 4 lines of output for this test were:
+a
+hello
+hello
+hello
+
+The difference between your output(-) and the correct output(+) is:
+...
+  hello
+- hello
+- hello
+- hello
+- hello
+- hello
+- hello
+You can reproduce this test by executing these commands:
+  head dictionary.txt | python3 -s -S pied.py '/.{3}/,/.{5}/c hello'
+Test subset2_branch_101 ("echo 1000001 | python3 -s -S pied.py ': start; s/00/0/; t start'") - passed
+Test subset2_branch_102 ("echo 0123456789 | python3 -s -S pied.py -n 'p; : begin;s/[^ ](.)/ \\1/; t skip; q; : skip; p; b begin'") - passed
+Test subset2_branch_103 ("printf '101011\\n0110' | python3 -s -S pied.py -f binary2words.script") - failed (Incorrect output)
+Your program produced these 22 lines of output:
+101011 in words is:
+ in words is:
+one
+ in words is:
+zero
+ in words is:
+one
+ in words is:
+zero
+ in words is:
+one
+ in words is:
+one
+0110 in words is:
+ in words is:
+zero
+ in words is:
+one
+ in words is:
+one
+ in words is:
+zero
+
+The correct 14 lines of output for this test were:
+101011 in words is:
+ in words is:
+one
+zero
+one
+zero
+one
+one
+0110 in words is:
+ in words is:
+zero
+one
+one
+zero
+
+The difference between your output(-) and the correct output(+) is:
+...
+  one
+-  in words is:
+  zero
+-  in words is:
+  one
+-  in words is:
+  zero
+-  in words is:
+  one
+-  in words is:
+  one
+  zero
+-  in words is:
+  one
+-  in words is:
+  one
+-  in words is:
+  zero
+You can reproduce this test by executing these commands:
+  printf '101011\n0110' | python3 -s -S pied.py -f binary2words.script
+Test subset2_branch_104 ('head dictionary.txt | python3 -s -S pied.py -f rev.script') - passed
+Test subset2_branch_105 ('seq 250 260 | python3 -s -S pied.py -f decimal2binary.script') - passed
+97 tests passed 8 tests failed
+Don't understand why test subset1_addresses_54 failed?  Get AI-generated help by running: autotest-help
