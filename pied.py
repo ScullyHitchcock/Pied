@@ -4,7 +4,6 @@ import sys
 import re
 import tempfile
 
-
 # def parse_command(cmd_text: str) -> dict:
 #     result = {
 #         "addr1": None,
@@ -423,6 +422,11 @@ class Line:
     def __str__(self):
         return f"<File: {self.filename} Line {self.line_num}: '{self.line_txt}'>"
 
+    def is_beyond(self, address) -> bool:
+        if address.is_digit():
+            return self.line_num > int(address.addr)
+        return False
+
 class Result:
     def __init__(self, orin_line: str):
         self.orin_line = orin_line
@@ -502,7 +506,7 @@ class Script:
             cmds.append(cmd_txt)
         return cmds
 
-    def run(self, line: Line) -> Result:
+    def process(self, line: Line) -> Result:
         """
         遍历 cmd_list，逐个执行 line
         :param line:
@@ -618,12 +622,11 @@ class Command:
             if self.addr2.is_regex():
                 # 当在范围内且地址2不匹配，但地址2属于正则类型时，继续扩张 range，返回 True
                 return True
-            if self.addr2.is_digit():
+            if line.is_beyond(self.addr2):
                 # 当在范围内且地址2不匹配，但地址2属于数字类型，且当前行数已经超过地址2
                 # 关闭 range，返回 False
-                if int(self.addr2.addr) >= line.line_num:
-                    self.in_range = False
-                    return False
+                self.in_range = False
+                return False
             return True
         else:
             if self.addr1.match(line):
@@ -676,18 +679,27 @@ class Address:
         return False
 
 def line_generator(input: list | str | None) -> iter:
+    """
+    传入文件列表或文件名或空，按行读取输入数据
+    :param input: 输入数据
+    :return: 生成器
+    """
+
     def file_reader(filename) -> iter:
         with open(filename, 'r') as f:
             for line in f:
                 yield line.rstrip('\n')
     def line_iterator() -> iter:
         if not input:
+            # 如果没有输入数据，从 sys.stdin 中读取
             for line in sys.stdin:
                 yield 'stdin', line.rstrip('\n')
         elif isinstance(input, str):
+            # 如果输入数据是单个字符串（文件名），直接打开读取
             for line in file_reader(input):
                 yield input, line
         elif isinstance(input, list):
+            # 如果输入数据是列表，先遍历列表在打开文件读取
             for file in input:
                 for line in file_reader(file):
                     yield file, line
@@ -719,7 +731,7 @@ class PiedExecutor:
         # script 执行 line 命令，得到 res 结果
         # 输出结果
         for line in self.line_gen:
-            res = self.script.run(line)
+            res = self.script.process(line)
             res.output()
 
     def output(self, line):
@@ -777,6 +789,7 @@ def main():
         pied = PiedExecutor(line_gen, script, i_flag, n_flag)
         # pied 调用 execute() 方法，内部逻辑为对 line_gen 生成的每一行 Line 对象执行 script 中的 Command 命令，并输出
         pied.execute()
+
     if i_flag and input_files_lst:
         # 如果是 -i 模式且 input_files_lst 不为空时，需要对 input_files_lst 内的每个文件单独执行脚本命令
         for input_filename in input_files_lst:
