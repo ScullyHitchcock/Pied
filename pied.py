@@ -428,39 +428,18 @@ class Line:
         return False
 
 class Result:
-    def __init__(self, start_line, n_flag, i_flag):
-        self.start_line = start_line.line_txt
-        self.cur_line = self.start_line
-        self.cmd_records = []
+    def __init__(self, line: Line, n_flag: bool, i_flag: bool):
+        self.line = line
         self.n_flag = n_flag
         self.i_flag = i_flag
-        self.label_to_jump = None
-        self.append_lines = []
-        self.insert_lines = []
-        self.change_txt = None
-        self.substitute_txt = None
 
-    def mark_next_label(self, label_name: str):
-        self.label_to_jump = label_name
-    def last_cmd(self):
-        return self.cmd_records[-1]
-    def modify_line(self, new_line):
-        self.cur_line = new_line
-    def record_cmd(self, cmd):
-        self.cmd_records.append(cmd)
-    def append_line(self, line):
-        self.append_lines.append(line)
-    def insert_line(self, line):
-        self.insert_lines.append(line)
-    def output(self, line):
-        if line is not None:
-            print(line)
-    def remove_s_record(self):
-        self.cmd_records = [c for c in self.cmd_records if c != 's']
-
-    def regular_output(self):
-        if not self.n_flag:
-            self.output(self.cur_line)
+        self.print_line = not n_flag  # 默认是否输出该行
+        self.before = []  # i 命令要插入的行
+        self.after = []   # a 命令要插入的行
+        self.replaced_by_c = None  # c 命令的替代文本
+        self.deleted = False
+        self.terminated = False
+        self.substituted = False
 
 class Script:
     def __init__(self, script_texts):
@@ -546,16 +525,7 @@ class Script:
                 i += 1
 
     def locate_next_cmd_index(self, result: Result, i: int):
-        last_cmd_type = result.last_cmd()
-        if last_cmd_type in ('t', 'b'):
-            # 如果上一个命令是 t 命令或 b 命令，读取记录中的标签名
-            label = result.label_to_jump
-            # 通过标签名定位标签命令的下标
-            for label_i, cmd in enumerate(self.cmd_list):
-                if cmd.type == ':' and cmd.label == label:
-                    return label_i
-        else:
-            return i + 1
+        return i + 1
 
 class Command:
     def __init__(self, cmd_txt):
@@ -668,55 +638,25 @@ class Command:
     def process(self, result: Result):
         match self.type:
             case ':':
-                # 什么都不做
-                return
+                ...
             case 'p':
-                # 输出当前文本
-                # result.record_cmd(self.type)
-                result.output(result.cur_line)
+                result.after.append(result.line.line_txt)
             case 'q':
-                # 输出当前文本后退出
-                result.record_cmd(self.type)
-                # result.output(result.cur_line)
-                # sys.exit(0)
+                ...
             case 'd':
-                # 删除文本不输出
-                result.record_cmd(self.type)
-                result.modify_line(None)
+                ...
             case 's':
-                # 通过命令附带的参数修改文本，如果修改成功，记录在 result 中
-                pattern, repl, modifier = self.args
-                count = 0 if modifier else 1
-                new_line = re.sub(pattern, repl, result.cur_line, count=count)
-                if new_line != result.cur_line:
-                    result.record_cmd(self.type)
-                    result.modify_line(new_line)
+                ...
             case 'a':
-                # 在输出文本后输出此命令附带的文本
-                result.record_cmd(self.type)
-                extra_line = self.args
-                result.append_line(extra_line)
+                result.after.append(self.args)
             case 'i':
-                # 在输出文本前输出命令附带的文本
-                result.record_cmd(self.type)
-                extra_line = self.args
-                result.insert_line(extra_line)
+                result.before.append(self.args)
             case 'c':
                 ...
             case 't':
-                label = self.label
-                # 如果 result 有 s 命令执行成功的记录
-                if 's' in result.cmd_records:
-                    # 删除 s 记录以防下一次 t 命令错误判断
-                    result.remove_s_record()
-                    # 记录这个命令和要跳转的标签名，以使 script 能够触发下标跳转
-                    result.record_cmd(self.type)
-                    result.mark_next_label(label)
+                ...
             case 'b':
-                label = self.label
-                # 与 t 命令类似，但无条件记录
-                result.record_cmd(self.type)
-                result.mark_next_label(label)
+                ...
 
 class Address:
     def __init__(self, addr):
@@ -820,7 +760,18 @@ class PiedExecutor:
             self.output(res)
 
     def output(self, result: Result):
-        pass
+        if result.deleted:
+            return
+        for line in result.before:
+            print(line)
+        if result.replaced_by_c is not None:
+            print(result.replaced_by_c)
+        elif result.print_line:
+            print(result.line.line_txt)
+        for line in result.after:
+            print(line)
+        if result.terminated:
+            sys.exit(0)
 
 
 
