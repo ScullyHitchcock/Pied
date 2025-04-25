@@ -145,3 +145,32 @@ def test_substitute_escaped_delimiter_digit(capsys):
 
     assert captured.out == expected_output
 
+
+# subset2_branch_103: binary2words.script
+def test_branch_binary2words_script(capsys, tmp_path):
+    args = ['-f', 'binary2words.script']
+    stdin = "101011\n0110\n"
+    run_pied(args, stdin_text=stdin)
+    captured = capsys.readouterr()
+
+    expected_output = "\n".join([
+        "101011 in words is:",
+        " in words is:",
+        "one",
+        "zero",
+        "one",
+        "zero",
+        "one",
+        "one",
+        "0110 in words is:",
+        " in words is:",
+        "zero",
+        "one",
+        "one",
+        "zero"
+    ]) + "\n"
+
+    assert captured.out == expected_output
+
+
+
