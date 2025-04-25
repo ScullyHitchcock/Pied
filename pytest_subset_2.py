@@ -59,8 +59,89 @@ def test_insert(capsys):
     assert captured.out == "5\n6\nhello\n7\n8\n9\n"
 
 def test_change(capsys):
-    args = ['3c hello']
-    input_data = "\n".join(str(i) for i in range(5, 10)) + "\n"
+    args = ['2c hello']
+    input_data = "\n".join(str(i) for i in range(1, 4)) + "\n"
     run_pied(args, stdin_text=input_data)
     captured = capsys.readouterr()
-    assert captured.out == "5\n6\nhello\n8\n9\n"
+    assert captured.out == "1\nhello\n3\n"
+
+def test_change_range_cmd_dictionary(capsys):
+    args = ['/.{3}/,/.{5}/c hello']
+    stdin = "\n".join([
+        "a",
+        "aah",
+        "aahed",
+        "aahing",
+        "aahs",
+        "aal",
+        "aalii",
+        "aaliis",
+        "aals",
+        "aardvark"
+    ]) + "\n"
+
+    run_pied(args, stdin_text=stdin)
+    captured = capsys.readouterr()
+
+    # 分析：
+    # 行1：a          → 不匹配任何地址，保留
+    # 行2：aah        → .{3} 匹配，作为 addr1 起点
+    # 行3：aahed      → 仍在范围中
+    # 行4：aahing     → .{5} 匹配，作为 addr2 终点（包含），匹配结束
+    # 所以第2~4行被替换为一行或多行 "hello"，按 sed 标准，c命令只输出一次 hello
+
+    expected = "a\nhello\nhello\nhello\n"
+    assert captured.out == expected
+
+def test_substitute_escaped_slash(capsys):
+    args = ['s/[15]/z\\/z\\/z/']
+    stdin = "1\n2\n3\n4\n5\n"
+    run_pied(args, stdin_text=stdin)
+    captured = capsys.readouterr()
+
+    expected_output = "\n".join([
+        "z/z/z",  # 1 → z/z/z
+        "2",
+        "3",
+        "4",
+        "z/z/z"   # 5 → z/z/z
+    ]) + "\n"
+
+    assert captured.out == expected_output
+
+
+# subset2_substitute_87: s_[15]_z\_z\_z_
+def test_substitute_escaped_underscore(capsys):
+    args = ['s_[15]_z\\_z\\_z_']
+    stdin = "1\n2\n3\n4\n5\n"
+    run_pied(args, stdin_text=stdin)
+    captured = capsys.readouterr()
+
+    expected_output = "\n".join([
+        "z_z_z",  # 1 → z_z_z
+        "2",
+        "3",
+        "4",
+        "z_z_z"   # 5 → z_z_z
+    ]) + "\n"
+
+    assert captured.out == expected_output
+
+
+# subset2_substitute_88: s1[\15]1zzz1
+def test_substitute_escaped_delimiter_digit(capsys):
+    args = ['s1[\\15]1zzz1']
+    stdin = "1\n2\n3\n4\n5\n"
+    run_pied(args, stdin_text=stdin)
+    captured = capsys.readouterr()
+
+    expected_output = "\n".join([
+        "zzz",  # 1 → zzz
+        "2",
+        "3",
+        "4",
+        "zzz"   # 5 → zzz
+    ]) + "\n"
+
+    assert captured.out == expected_output
+

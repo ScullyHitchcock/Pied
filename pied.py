@@ -3,6 +3,8 @@ import shutil
 import sys
 import re
 import tempfile
+from collections import deque
+
 
 # def parse_command(cmd_text: str) -> dict:
 #     result = {
@@ -415,9 +417,17 @@ class Line:
         self.line_txt = line_txt
         self.next_line_txt = next_line_txt
         self.line_num = line_num
+        self.cmds_that_match_as_last_line = set()
 
     def is_last(self):
         return self.next_line_txt == ''
+
+    def is_edge_of(self, cmd):
+        if cmd in self.cmds_that_match_as_last_line:
+            return True
+        if cmd.addr2.is_empty():
+            return cmd.addr1.match(self)
+        return False
 
     def __str__(self):
         return f"<File: {self.filename} Line {self.line_num}: '{self.line_txt}'>"
@@ -428,18 +438,62 @@ class Line:
         return False
 
 class Result:
-    def __init__(self, line: Line, n_flag: bool, i_flag: bool):
+    def __init__(self, line: Line, n_flag: bool, i_flag: bool, temp_file: str):
         self.line = line
+        self.line_txt = line.line_txt
         self.n_flag = n_flag
         self.i_flag = i_flag
+        self.in_c_cmd_range = False
+        self.pre_queue = deque()  # i 命令要插入的行
+        self.after_queue = deque()   # a 命令要插入的行
+        self.signal_to_activate_index_jump = None
+        self.is_substituted = False
+        self.is_deleted = False
+        self.temp_file = temp_file
+        self.input_file = line.filename if i_flag else None
 
-        self.print_line = not n_flag  # 默认是否输出该行
-        self.before = []  # i 命令要插入的行
-        self.after = []   # a 命令要插入的行
-        self.replaced_by_c = None  # c 命令的替代文本
-        self.deleted = False
-        self.terminated = False
-        self.substituted = False
+    def save_to_temp_file(self, txt):
+        with open(self.temp_file, mode='a', encoding='utf-8') as f:
+            f.write(txt + '\n')
+
+    def suppress_output(self):
+        return (self.n_flag or
+                self.is_deleted or
+                self.in_c_cmd_range)
+
+    def add_pre_order(self, cmd):
+        self.pre_queue.appendleft(cmd)
+
+    def delete_line(self):
+        self.is_deleted = True
+        self.line_txt = None
+
+    def substitute(self, new_txt: str):
+        self.line_txt = new_txt
+        self.line.line_txt = new_txt
+        self.is_substituted = True
+
+    def add_after_order(self, cmd):
+        self.after_queue.appendleft(cmd)
+
+    def add_jump_signal(self, cmd):
+        self.signal_to_activate_index_jump = cmd
+
+    def reset_jump_signal(self):
+        self.is_substituted = False
+        self.signal_to_activate_index_jump = None
+
+    def regular_output(self):
+        self.output(self.line_txt)
+
+    def output(self, line_txt):
+        if line_txt is not None:
+            if self.i_flag:
+                # 保存到文件
+                self.save_to_temp_file(line_txt)
+            else:
+                # 输出到 stdout
+                print(line_txt)
 
 class Script:
     def __init__(self, script_texts):
@@ -509,22 +563,34 @@ class Script:
             cmds.append(cmd_txt)
         return cmds
 
-    def process(self, line: Line, result: Result):
+    def process(self, result: Result):
         """
-        遍历 cmd_list，逐个执行 line
+        遍历 cmd_list，匹配脚本，执行前置命令，将后置命令放入 result.after_queue 中
         :param line:
         :return:
         """
         i, l = 0, len(self.cmd_list)
         while i < l:
             cmd = self.cmd_list[i]
-            if cmd.match(line):
+            if cmd.match(result.line):
                 cmd.process(result)
-                i = self.locate_next_cmd_index(result, i)
+                i = self.jump_to_next(result, i)
             else:
                 i += 1
 
-    def locate_next_cmd_index(self, result: Result, i: int):
+    def jump_to_next(self, result: Result, i: int):
+        special_cmd = result.signal_to_activate_index_jump
+        if special_cmd is not None:
+            if special_cmd.type in ('d', 'q'):
+                i = self.__len__()
+            elif special_cmd.type in ('t', 'b'):
+                label = special_cmd.label
+                for j, cmd in enumerate(self.cmd_list):
+                    if cmd.type == ':' and cmd.label == label:
+                        i = j
+                        break
+            result.reset_jump_signal()
+            return i
         return i + 1
 
 class Command:
@@ -550,7 +616,6 @@ class Command:
             "cmd": None,
             "args": None,
             "label": None,
-            "branch_label": None,
         }
 
         i = 0
@@ -595,7 +660,7 @@ class Command:
         rest = cmd_txt[i:]
 
         if result["cmd"] in ('b', 't', ':'):
-            result["branch"] = rest or None
+            result["label"] = rest or None
         elif result["cmd"] == 's':
             # parse s/pat/repl/flags
             if rest:
@@ -607,6 +672,14 @@ class Command:
 
         return result
 
+    def substitute(self, line: str) -> str:
+        if self.type == 's':
+            pattern, repl, modifier = self.args
+            count = 0 if modifier else 1
+            new_line = re.sub(pattern, repl, line, count=count)
+            return new_line
+        return line
+
     def match(self, line: Line) -> bool:
         if self.addr1.is_empty():
             return True
@@ -617,7 +690,9 @@ class Command:
             if self.addr2.match(line):
                 # 当在范围内且地址2匹配，说明当前行已在范围边缘，
                 # 关闭 range，代表下一行内容将要重新评估 addr1
+                # 同时在 line 中记录这个 cmd（为后续 c 命令的处理提供注脚）
                 # 返回 True
+                line.cmds_that_match_as_last_line.add(self)
                 self.in_range = False
                 return True
             if self.addr2.is_regex():
@@ -626,6 +701,8 @@ class Command:
             if line.is_beyond(self.addr2):
                 # 当在范围内且地址2不匹配，但地址2属于数字类型，且当前行数已经超过地址2
                 # 关闭 range，返回 False
+                if self.addr1.match(line):
+                    return True
                 self.in_range = False
                 return False
             return True
@@ -636,27 +713,64 @@ class Command:
             return False
 
     def process(self, result: Result):
+        # 命令执行时机以常规输出 regular_output 为分界线：
+        # pre_order: p, d, s, i, t, b
+        # after_order: q, a, c
+        # 当匹配到 pre_order 时，立即执行命令逻辑
+        # 当匹配到 after_order 时，执行部分前置逻辑后将其加入 result 的 after_queue 中
         match self.type:
-            case ':':
-                ...
             case 'p':
-                result.after.append(result.line.line_txt)
+                # 前置命令，立即执行
+                # 执行命令：output current line
+                result.output(result.line.line_txt)
             case 'q':
-                ...
+                # 后置命令，放在 after queue，命令逻辑为当 result.regular_out() 后执行 sys.exit()
+                result.add_after_order(self)
+                # 结束对 current line 的操作，向 result 添加一个信号，提示 script 将下标移至最后
+                result.add_jump_signal(self)
             case 'd':
-                ...
+                # 前置命令，设置 result.is_deleted 为 True，同时设置 result.line_txt = None
+                result.delete_line()
+                # 结束对 current line 的操作，向 result 添加一个信号，提示 script 将下标移至最后
+                result.add_jump_signal(self)
             case 's':
-                ...
+                # 前置命令，替换文本，将 result.line_txt 替换为特定文本
+                cur_line = result.line.line_txt
+                sub_line = self.substitute(cur_line)
+                if sub_line != cur_line:
+                    # 如果执行成功，修改 result.line_txt 实例属性和设置 result.is_substituted = True
+                    result.substitute(sub_line)
             case 'a':
-                result.after.append(self.args)
+                # 后置命令
+                # 执行命令：after regular_order, output specific text based on self.args
+                result.add_after_order(self)
             case 'i':
-                result.before.append(self.args)
+                # 前置命令
+                # output specific text based on args before regular_order
+                insert_txt = self.args
+                result.output(insert_txt)
             case 'c':
-                ...
+                # 前置命令
+                # 在 result 中添加一个 flag，当 flag 存在时抑制 regular_output。
+                # 如果 1 result.line.is_edge_of(this cmd)
+                # or 2 result.line.is_last()（说明已经到达 c 命令控制范围边缘）
+                # output(c.args)
+                # 取消 flag
+                change_txt = self.args
+                result.in_c_cmd_range = True
+                if result.line.is_edge_of(self) or result.line.is_last():
+                    result.output(change_txt)
+                    # result.in_c_cmd_range = False
             case 't':
-                ...
+                # 前置命令
+                # 读取 result 记录，如果有 s 命令执行成功的记录，则：
+                #   向 result 添加信号，提示 script 进行下标跳转工作
+                if result.is_substituted:
+                    result.add_jump_signal(self)
             case 'b':
-                ...
+                # 前置命令
+                # 向 result 添加信号，提示 script 进行下标跳转工作
+                result.add_jump_signal(self)
 
 class Address:
     def __init__(self, addr):
@@ -747,31 +861,43 @@ class PiedExecutor:
         self.i_flag = i_flag
         self.n_flag = n_flag
 
+    @staticmethod
+    def temp_file():
+        temp = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8')
+        temp_name = temp.name
+        temp.close()
+        return temp_name
+
     def execute(self):
         # 从 line_gen 中提取 line 文本
         # script 执行 line 命令，得到 res 结果
         # 输出结果
+        temp_file = self.temp_file() if self.i_flag else None
+        input_file = None
         for line in self.line_gen:
+            input_file = line.filename
             # 创建 result 对象，通过 script.process 方法将处理结果放入其中
-            res = Result(line, self.n_flag, self.i_flag)
-            self.script.process(line, res)
+            res = Result(line, self.n_flag, self.i_flag, temp_file)
 
-            # 处理 result 对象
+            # 运行脚本，执行其中的前置命令
+            self.script.process(res)
+
+            # 执行 regular_output() 及脚本其余的后置命令
             self.output(res)
+        if temp_file and input_file:
+            shutil.move(temp_file, input_file)
 
     def output(self, result: Result):
-        if result.deleted:
-            return
-        for line in result.before:
-            print(line)
-        if result.replaced_by_c is not None:
-            print(result.replaced_by_c)
-        elif result.print_line:
-            print(result.line.line_txt)
-        for line in result.after:
-            print(line)
-        if result.terminated:
-            sys.exit(0)
+        if not result.suppress_output():
+            result.regular_output()
+        while result.after_queue:
+            cmd = result.after_queue.pop()
+            match cmd.type:
+                case 'q':
+                    sys.exit(0)
+                case 'a':
+                    append_line = cmd.args
+                    result.output(append_line)
 
 
 
@@ -803,7 +929,9 @@ def parse_cmd_line_args(args: list) -> tuple[bool, bool, str, list[str]]:
     if args:
         # 3. -f foo.pied OR inline_cmd
         if args and args[0] == '-f':
-            script_txt = args[1]
+            script_filename = args[1]
+            with open(script_filename, 'r') as f:
+                script_txt = f.read()
             input_files_lst = args[2:]
         else:
             script_txt = args[0]
