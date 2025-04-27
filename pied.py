@@ -12,13 +12,13 @@ class Line:
         self.line_txt = line_txt
         self.next_line_txt = next_line_txt
         self.line_num = line_num
-        self.cmds_that_match_as_last_line = set()
+        self.edge_cmds = set()
 
     def is_last(self):
         return self.next_line_txt == ''
 
-    def is_edge_of(self, cmd):
-        if cmd in self.cmds_that_match_as_last_line:
+    def on_edge_of(self, cmd):
+        if cmd in self.edge_cmds or self.is_last():
             return True
         if cmd.addr2.is_empty():
             return cmd.addr1.match(self)
@@ -39,7 +39,6 @@ class Result:
         self.n_flag = n_flag
         self.i_flag = i_flag
         self.in_c_cmd_range = False
-        self.pre_queue = deque()  # i 命令要插入的行
         self.after_queue = deque()   # a 命令要插入的行
         self.signal_to_activate_index_jump = None
         self.is_substituted = False
@@ -55,9 +54,6 @@ class Result:
         return (self.n_flag or
                 self.is_deleted or
                 self.in_c_cmd_range)
-
-    def add_pre_order(self, cmd):
-        self.pre_queue.appendleft(cmd)
 
     def delete_line(self):
         self.is_deleted = True
@@ -312,7 +308,7 @@ class Command:
                 # 关闭 range，代表下一行内容将要重新评估 addr1
                 # 同时在 line 中记录这个 cmd（为后续 c 命令的处理提供注脚）
                 # 返回 True
-                line.cmds_that_match_as_last_line.add(self)
+                line.edge_cmds.add(self)
                 self.in_range = False
                 return True
             if self.addr2.is_regex():
@@ -378,7 +374,7 @@ class Command:
                 # 取消 flag
                 change_txt = self.args
                 result.in_c_cmd_range = True
-                if result.line.is_edge_of(self) or result.line.is_last():
+                if result.line.on_edge_of(self) or result.line.is_last():
                     result.output(change_txt)
                     # result.in_c_cmd_range = False
             case 't':
